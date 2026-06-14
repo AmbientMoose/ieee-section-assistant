@@ -33,6 +33,28 @@ SOURCES = [
         "category": "Governance / Operations",
         "type": "pdf",
     },
+    {
+        "id": "ieee_constitution_bylaws",
+        "title": "IEEE Constitution and Bylaws",
+        "url": "https://events.ieee.org/wp-content/uploads/ieee-constitution-and-bylaws.pdf",
+        "category": "Governance / Operations",
+        "type": "pdf",
+    },
+    # ---- Treasurer / Finance ------------------------------------------------
+    {
+        "id": "treasurer_training",
+        "title": "IEEE Volunteer Training (Treasurer training & resources)",
+        "url": "https://mga.ieee.org/volunteer-hub/volunteer-training",
+        "category": "Treasurer / Finance",
+        "type": "html",
+    },
+    {
+        "id": "finance_operations_manual",
+        "title": "IEEE Finance Operations Manual (FOM) — financial procedures",
+        "url": "https://events.ieee.org/wp-content/uploads/financial-ops-manual.pdf",
+        "category": "Treasurer / Finance",
+        "type": "pdf",
+    },
     # ---- Concur / Expenses --------------------------------------------------
     {
         "id": "travel_expense_guidelines",
