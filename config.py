@@ -130,5 +130,5 @@ TOP_K = 5
 
 # --- Optional LLM synthesis --------------------------------------------------
 #   ANTHROPIC_API_KEY -> Anthropic (claude);  OPENAI_API_KEY -> OpenAI
-ANTHROPIC_MODEL = "claude-sonnet-4-6"
+ANTHROPIC_MODEL = "claude-opus-4-8"
 OPENAI_MODEL = "gpt-4o-mini"
