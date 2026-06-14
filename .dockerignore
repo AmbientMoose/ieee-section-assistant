@@ -1,0 +1,8 @@
+.git/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.streamlit/secrets.toml
+data/docs/
+data/index.pkl

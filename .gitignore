@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets - NEVER commit real secrets. Configure them in the Streamlit Cloud UI.
+.streamlit/secrets.toml
+
+# Downloaded source documents (large; rebuilt by ingest.py on first boot)
+data/docs/
+
+# Keep data/index.pkl OUT of git by default so it rebuilds on the server.
+# To deploy faster with a prebuilt index, comment the next line and commit it.
+data/index.pkl

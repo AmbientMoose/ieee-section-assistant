@@ -1,0 +1,19 @@
+services:
+  ieee-assistant:
+    build: .
+    image: ieee-section-assistant
+    container_name: ieee-section-assistant
+    ports:
+      - "8501:8501"
+    environment:
+      # Set these in a .env file next to this compose file, or in your shell.
+      APP_PASSWORD: "${APP_PASSWORD:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      # OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    volumes:
+      # Persist the built index + downloaded docs across restarts.
+      - ieee_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  ieee_data:
