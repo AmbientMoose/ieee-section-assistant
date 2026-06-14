@@ -12,4 +12,4 @@ data/docs/
 
 # Keep data/index.pkl OUT of git by default so it rebuilds on the server.
 # To deploy faster with a prebuilt index, comment the next line and commit it.
-data/index.pkl
+# data/index.pkl
