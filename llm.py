@@ -8,6 +8,7 @@ so the prototype is fully runnable offline.
 """
 
 import os
+import re
 import textwrap
 from typing import List, Tuple
 
@@ -35,14 +36,35 @@ def _format_passages(hits: List[Tuple[Chunk, float]]) -> str:
     return "\n\n".join(blocks)
 
 
-def _citation_list(hits: List[Tuple[Chunk, float]]) -> str:
+def _source_id(i: int, url: str, markdown: bool) -> str:
+    """Render a source id like [S1] - as a clickable link in markdown mode."""
+    if markdown and url:
+        return f"[\\[S{i}\\]]({url})"  # escaped brackets keep the [S1] text visible
+    return f"[S{i}]"
+
+
+def _linkify_citations(text: str, hits: List[Tuple[Chunk, float]]) -> str:
+    """Turn inline [S1], [S2] references in an LLM answer into clickable links."""
+    urls = {i: getattr(ch, "url", "") for i, (ch, _) in enumerate(hits, start=1)}
+
+    def repl(m: "re.Match") -> str:
+        n = int(m.group(1))
+        url = urls.get(n)
+        return f"[\\[S{n}\\]]({url})" if url else m.group(0)
+
+    return re.sub(r"\[S(\d+)\]", repl, text)
+
+
+def _citation_list(hits: List[Tuple[Chunk, float]], markdown: bool = False) -> str:
     lines = []
     for i, (ch, score) in enumerate(hits, start=1):
-        lines.append(f"[S{i}] {ch.doc_title} - p.{ch.page} (relevance {score:.2f})")
+        sid = _source_id(i, getattr(ch, "url", ""), markdown)
+        lines.append(f"{sid} {ch.doc_title} - p.{ch.page} (relevance {score:.2f})")
     return "\n".join(lines)
 
 
-def extractive_answer(query: str, hits: List[Tuple[Chunk, float]]) -> str:
+def extractive_answer(query: str, hits: List[Tuple[Chunk, float]],
+                      markdown: bool = False) -> str:
     if not hits:
         return ("I couldn't find anything relevant in the indexed IEEE documents. "
                 "Try rephrasing, or contact MGA staff for guidance.")
@@ -52,7 +74,7 @@ def extractive_answer(query: str, hits: List[Tuple[Chunk, float]]) -> str:
         f"Most relevant guidance, from {top.doc_title} (p.{top.page}):\n",
         textwrap.fill(top.text.strip(), width=88),
         "\n\nSupporting passages:",
-        _citation_list(hits),
+        _citation_list(hits, markdown),
     ]
     return "\n".join(out)
 
@@ -85,19 +107,29 @@ def _openai(query: str, passages: str) -> str:
     return resp.choices[0].message.content
 
 
-def synthesize(query: str, hits: List[Tuple[Chunk, float]]) -> str:
-    """Return a grounded answer + citation list. Uses an LLM if a key exists."""
+def synthesize(query: str, hits: List[Tuple[Chunk, float]],
+               markdown: bool = False) -> str:
+    """Return a grounded answer + citation list. Uses an LLM if a key exists.
+
+    When markdown=True (web UI), source ids like [S1] - both inline in the
+    answer and in the Sources list - are rendered as clickable links.
+    """
     if not hits:
-        return extractive_answer(query, hits)
+        return extractive_answer(query, hits, markdown)
     passages = _format_passages(hits)
-    citations = "\n\nSources:\n" + _citation_list(hits)
+    citations = "\n\nSources:\n" + _citation_list(hits, markdown)
 
     try:
         if os.getenv("ANTHROPIC_API_KEY"):
-            return _anthropic(query, passages) + citations
-        if os.getenv("OPENAI_API_KEY"):
-            return _openai(query, passages) + citations
+            answer = _anthropic(query, passages)
+        elif os.getenv("OPENAI_API_KEY"):
+            answer = _openai(query, passages)
+        else:
+            return extractive_answer(query, hits, markdown)
     except Exception as e:  # noqa: BLE001
-        return (f"(LLM call failed: {e})\n\n" + extractive_answer(query, hits))
+        return (f"(LLM call failed: {e})\n\n"
+                + extractive_answer(query, hits, markdown))
 
-    return extractive_answer(query, hits)
+    if markdown:
+        answer = _linkify_citations(answer, hits)
+    return answer + citations

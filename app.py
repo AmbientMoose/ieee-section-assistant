@@ -138,12 +138,14 @@ if prompt:
     with st.chat_message("assistant"):
         with st.spinner("Searching IEEE documents..."):
             hits = index.search(prompt, top_k=config.TOP_K)
-            reply = synthesize(prompt, hits)
+            reply = synthesize(prompt, hits, markdown=True)
         st.markdown(reply)
         if hits:
             with st.expander("Show retrieved passages"):
                 for i, (ch, score) in enumerate(hits, start=1):
-                    st.markdown(f"**[S{i}] {ch.doc_title} - p.{ch.page}** "
+                    url = getattr(ch, "url", "")
+                    sid = f"[\\[S{i}\\]]({url})" if url else f"[S{i}]"
+                    st.markdown(f"**{sid} {ch.doc_title} - p.{ch.page}** "
                                 f"(relevance {score:.2f})")
                     st.write(ch.text.strip())
     st.session_state.history.append(("assistant", reply))
