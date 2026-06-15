@@ -148,7 +148,7 @@ KB_KNOWLEDGEBASE = {
 # --- Retrieval settings ------------------------------------------------------
 CHUNK_WORDS = 220
 CHUNK_OVERLAP = 40
-TOP_K = 5
+TOP_K = 8
 
 # --- Optional LLM synthesis --------------------------------------------------
 #   ANTHROPIC_API_KEY -> Anthropic (claude);  OPENAI_API_KEY -> OpenAI

@@ -27,8 +27,29 @@ _STOP = set(
 )
 
 
+def _stem(t: str) -> str:
+    """Very light suffix stemmer: folds common plural/verb inflections to a
+    shared root so 'officers'/'officer' and 'reporting'/'report' match at query
+    time. Intentionally crude - no dependency, applied identically when building
+    the index and when vectorizing a query, so both sides stay consistent."""
+    if len(t) <= 3 or not t.isalpha():
+        return t
+    if t.endswith("ies") and len(t) > 4:
+        return t[:-3] + "y"
+    if t.endswith("ing") and len(t) > 5:
+        return t[:-3]
+    if t.endswith("ed") and len(t) > 4:
+        return t[:-2]
+    if t.endswith("es") and len(t) > 4:
+        return t[:-2]
+    if t.endswith("s") and not t.endswith("ss"):
+        return t[:-1]
+    return t
+
+
 def tokenize(text: str) -> List[str]:
-    return [t for t in _TOKEN_RE.findall(text.lower()) if t not in _STOP and len(t) > 1]
+    return [_stem(t) for t in _TOKEN_RE.findall(text.lower())
+            if t not in _STOP and len(t) > 1]
 
 
 @dataclass
@@ -75,13 +96,32 @@ class Index:
                 vec /= n
         return vec
 
-    def search(self, query: str, top_k: int = 5):
+    def search(self, query: str, top_k: int = 5, max_per_doc: int = 2):
+        """Return up to top_k (chunk, score) hits, most relevant first.
+
+        To keep results diverse, at most `max_per_doc` chunks from any single
+        document are returned - otherwise one long doc can fill every slot and
+        crowd out the document that actually answers the question.
+        """
         q = self._vectorize(query)
         if not np.any(q):
             return []
         scores = self.matrix @ q  # cosine similarity (both normalized)
-        order = np.argsort(-scores)[:top_k]
-        return [(self.chunks[i], float(scores[i])) for i in order if scores[i] > 0]
+        order = np.argsort(-scores)
+        results = []
+        per_doc: Dict[str, int] = {}
+        for i in order:
+            s = float(scores[i])
+            if s <= 0:
+                break
+            ch = self.chunks[i]
+            if per_doc.get(ch.doc_id, 0) >= max_per_doc:
+                continue
+            results.append((ch, s))
+            per_doc[ch.doc_id] = per_doc.get(ch.doc_id, 0) + 1
+            if len(results) >= top_k:
+                break
+        return results
 
 
 def build_index(chunks: List[Chunk]) -> Index:

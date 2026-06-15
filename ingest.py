@@ -87,6 +87,27 @@ class _TextExtractor(HTMLParser):
                 self.parts.append(text)
 
 
+# In-body boilerplate that pollutes vTools KB article text. These are plain text
+# in the page body (not in <nav>/<footer> tags), so _TextExtractor can't drop
+# them; left in, they dilute each chunk's tf-idf vector and hurt retrieval.
+_KB_NOISE = re.compile(
+    r"Skip to content"
+    r"|Tip: Use arrows to navigate results, ESC to focus search input"
+    r"|Click to Enlarge"
+    r"|Estimated reading time:\s*\d+\s*min(?:ute)?s?",
+    re.IGNORECASE,
+)
+# The per-article footer (feedback widget + prev/next nav) is pure chrome; drop
+# everything from it onward.
+_KB_FOOTER = re.compile(r"Was this article helpful\?.*$", re.IGNORECASE | re.DOTALL)
+
+
+def _strip_boilerplate(text: str) -> str:
+    text = _KB_FOOTER.sub(" ", text)
+    text = _KB_NOISE.sub(" ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def html_to_units(path) -> List[Tuple[int, str]]:
     raw = path.read_text(encoding="utf-8", errors="ignore")
     # Drop the title/content of obvious boilerplate blocks up front.
@@ -94,6 +115,7 @@ def html_to_units(path) -> List[Tuple[int, str]]:
     parser.feed(raw)
     text = " ".join(parser.parts)
     text = re.sub(r"\s+", " ", text).strip()
+    text = _strip_boilerplate(text)
     return [(1, text)] if text else []
 
 
