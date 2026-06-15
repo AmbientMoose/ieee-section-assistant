@@ -101,9 +101,10 @@ with st.sidebar:
     st.subheader("Indexed sources")
     seen = {}
     for ch in index.chunks:
-        seen.setdefault(ch.doc_title, ch.category)
-    for title, cat in seen.items():
-        st.markdown(f"- **{title}**  \n  _{cat}_")
+        seen.setdefault(ch.doc_title, (ch.category, getattr(ch, "url", "")))
+    for title, (cat, url) in seen.items():
+        label = f"[{title}]({url})" if url else title
+        st.markdown(f"- **{label}**  \n  _{cat}_")
     st.divider()
     st.caption(f"{index.meta['n_chunks']} passages indexed.")
     st.caption("Set ANTHROPIC_API_KEY or OPENAI_API_KEY for synthesized "

@@ -329,7 +329,8 @@ def build() -> None:
         for pno, ptext in units:
             for ck in chunk_text(ptext, config.CHUNK_WORDS, config.CHUNK_OVERLAP):
                 all_chunks.append(Chunk(cid, src["id"], src["title"],
-                                        src["category"], pno, ck))
+                                        src["category"], pno, ck,
+                                        src.get("url", "")))
                 cid += 1
                 n_chunks_doc += 1
         if n_chunks_doc == 0:

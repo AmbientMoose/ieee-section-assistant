@@ -39,6 +39,7 @@ class Chunk:
     category: str
     page: int
     text: str
+    url: str = ""  # source URL for clickable citations (empty for sample corpus)
 
 
 @dataclass
