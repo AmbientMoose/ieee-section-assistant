@@ -27,9 +27,9 @@ DOCS_DIR.mkdir(exist_ok=True)
 SOURCES = [
     # ---- Governance / Operations -------------------------------------------
     {
-        "id": "mga_ops_manual_2025",
-        "title": "IEEE MGA Operations Manual (2025)",
-        "url": "https://mga.ieee.org/images/files/Current_MGA_Operations_Manual_2025__27_February.pdf",
+        "id": "mga_ops_manual_2026",
+        "title": "IEEE MGA Operations Manual (2026)",
+        "url": "https://mga.ieee.org/images/files/board-committees/Ops%20Manual/Current%20MGA%20Operations%20Manual%202026_23%20February%202026.pdf",
         "category": "Governance / Operations",
         "type": "pdf",
     },
