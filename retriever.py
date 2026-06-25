@@ -87,6 +87,18 @@ SYNONYMS = {
     "wiab": ["webinabox", "website"],
     "geounit": ["geographic", "unit", "organizational", "ou"],
     "geounits": ["geographic", "units", "organizational", "ou"],
+    # forming/establishing a unit (e.g. a Student Branch): bridge the verb
+    # "form" to the documentation's "formation"/"petition" wording. The stemmer
+    # folds forming/formed -> form, but NOT formation -> form, so without this a
+    # question about "forming" a branch misses the "Formation" section.
+    "form": ["formation", "formations", "petition", "establish"],
+    "forming": ["formation", "petition", "establish"],
+    "formed": ["formation", "petition", "establish"],
+    "formation": ["form", "petition", "establish"],
+    "formations": ["form", "petition", "establish"],
+    "petition": ["formation", "petitions", "establish"],
+    "petitions": ["formation", "petition", "establish"],
+    "establish": ["form", "formation", "petition"],
     "annually": ["annual", "year", "yearly"],
     "annual": ["annually", "year", "yearly"],
 }
