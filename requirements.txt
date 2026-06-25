@@ -3,6 +3,7 @@ numpy>=1.24
 pypdf>=4.0
 requests>=2.31
 streamlit>=1.33
+markdown>=3.4          # render answers as rich text when copied (paste into Word)
 
 # Enables LLM-synthesized answers (used when ANTHROPIC_API_KEY is set in Secrets).
 anthropic>=0.39
