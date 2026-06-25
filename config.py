@@ -142,6 +142,9 @@ KB_KNOWLEDGEBASE = {
         "who-can-vote",
         "voter-instructions",
         "reporting-election-results",
+        "intro-to-webinabox",
+        "local-groups-overview",
+        "how-to-request-a-local-group",
     ],
 }
 

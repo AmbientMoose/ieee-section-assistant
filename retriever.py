@@ -76,6 +76,17 @@ SYNONYMS = {
     "expenses": ["reimbursement"],
     "officer": ["volunteer", "leader"],
     "volunteer": ["officer", "leader"],
+    # geographic-unit website tooling (WebInABox) + "geounit" jargon. Maps a
+    # volunteer's intent ("create a website") to the tool name that actually
+    # does it, so the WebInABox article can surface.
+    "website": ["webinabox", "wiab", "site", "web"],
+    "websites": ["webinabox", "wiab", "site"],
+    "site": ["website", "webinabox"],
+    "web": ["website", "webinabox"],
+    "webinabox": ["website", "wiab"],
+    "wiab": ["webinabox", "website"],
+    "geounit": ["geographic", "unit", "organizational", "ou"],
+    "geounits": ["geographic", "units", "organizational", "ou"],
     "annually": ["annual", "year", "yearly"],
     "annual": ["annually", "year", "yearly"],
 }
