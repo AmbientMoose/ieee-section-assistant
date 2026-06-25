@@ -145,6 +145,19 @@ KB_KNOWLEDGEBASE = {
     ],
 }
 
+# --- IEEE Volunteer Hub (auto-ingested by crawling) --------------------------
+# Starting at `root`, ingest.py crawls every page whose URL stays under that
+# path (e.g. /volunteer-hub/geographic-unit-operations/...), following internal
+# links breadth-first. Each HTML page becomes a source. Pages already listed in
+# SOURCES (e.g. volunteer-training, ou-analytics) are de-duplicated automatically.
+VOLUNTEER_HUB = {
+    "enabled": True,
+    "root": "https://mga.ieee.org/volunteer-hub",
+    "category": "Volunteer Hub",
+    "max_pages": 250,        # safety cap on how many pages to crawl
+    "delay": 0.3,            # seconds between fetches (be polite to IEEE servers)
+}
+
 # --- Retrieval settings ------------------------------------------------------
 CHUNK_WORDS = 220
 CHUNK_OVERLAP = 40

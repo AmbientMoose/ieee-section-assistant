@@ -16,6 +16,8 @@ a warning. A small bundled sample (sample_corpus.py) guarantees the app runs.
 import argparse
 import re
 import sys
+import time
+import urllib.parse as up
 from html.parser import HTMLParser
 from xml.etree import ElementTree as ET
 from typing import List, Tuple
@@ -270,6 +272,123 @@ def discover_kb_articles() -> List[dict]:
 
 
 # --------------------------------------------------------------------------- #
+# IEEE Volunteer Hub discovery (breadth-first crawl under /volunteer-hub)
+# --------------------------------------------------------------------------- #
+def _hub_id(url: str, root: str) -> str:
+    rel = url[len(root):].strip("/")
+    rel = rel or "home"
+    return "hub_" + re.sub(r"[^A-Za-z0-9]+", "_", rel).strip("_").lower()
+
+
+def _titleize(segment: str) -> str:
+    words = segment.replace("-", " ").replace("_", " ").split()
+    out = []
+    for i, w in enumerate(words):
+        lw = w.lower()
+        if lw in _BRAND:
+            out.append(_BRAND[lw])
+        elif lw in _SMALL and i:
+            out.append(lw)
+        else:
+            out.append(w.capitalize())
+    return " ".join(out)
+
+
+def _hub_title(url: str, root: str) -> str:
+    rel = url[len(root):].strip("/")
+    if not rel:
+        return "IEEE Volunteer Hub (home)"
+    return "Volunteer Hub: " + _titleize(rel.rsplit("/", 1)[-1])
+
+
+# Links to file assets we don't crawl/ingest as HTML pages.
+_HUB_SKIP_EXT = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp",
+                 ".zip", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+                 ".mp4", ".mov", ".css", ".js", ".ico", ".xml", ".rss")
+
+
+def discover_volunteer_hub_pages(exclude_urls=None) -> List[dict]:
+    """Breadth-first crawl every page under the Volunteer Hub `root` and return
+    one HTML source dict per page. Pages whose normalized URL is in `exclude_urls`
+    (already listed in SOURCES) are crawled for links but not re-added as sources.
+
+    Fetched HTML is cached into DOCS_DIR so build()'s download() reuses it
+    instead of fetching each page a second time.
+    """
+    cfg = getattr(config, "VOLUNTEER_HUB", None)
+    if not cfg or not cfg.get("enabled"):
+        return []
+
+    root = cfg["root"].rstrip("/")
+    prefix = root + "/"
+    parsed = up.urlparse(root)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    max_pages = cfg.get("max_pages", 250)
+    delay = cfg.get("delay", 0.0)
+    exclude = set(exclude_urls or ())
+
+    def normalize(u: str) -> str:
+        return u.split("#")[0].split("?")[0].rstrip("/")
+
+    def in_scope(u: str) -> bool:
+        return u == root or u.startswith(prefix)
+
+    queue = [root]
+    visited = set()
+    found = {}  # normalized url -> source dict
+
+    while queue and len(visited) < max_pages:
+        url = queue.pop(0)
+        nu = normalize(url)
+        if nu in visited or not in_scope(nu):
+            continue
+        visited.add(nu)
+        try:
+            html = _fetch_text(url)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ! Volunteer Hub: could not read {url}: {e}", file=sys.stderr)
+            continue
+
+        if nu not in exclude:
+            sid = _hub_id(nu, root)
+            found[nu] = {
+                "id": sid,
+                "title": _hub_title(nu, root),
+                "url": nu,
+                "category": cfg.get("category", "Volunteer Hub"),
+                "type": "html",
+            }
+            # Cache page so download() won't fetch it again.
+            try:
+                (config.DOCS_DIR / f"{sid}.html").write_bytes(
+                    html.encode("utf-8", "ignore"))
+            except Exception:  # noqa: BLE001
+                pass
+
+        # enqueue in-scope links
+        parser = _LinkExtractor()
+        parser.feed(html)
+        for href in parser.hrefs:
+            if href.startswith("//"):
+                href = parsed.scheme + ":" + href
+            elif href.startswith("/"):
+                href = origin + href
+            elif not href.lower().startswith("http"):
+                href = up.urljoin(url + "/", href)
+            nh = normalize(href)
+            if (in_scope(nh) and nh not in visited
+                    and not nh.lower().endswith(_HUB_SKIP_EXT)):
+                queue.append(nh)
+
+        if delay:
+            time.sleep(delay)
+
+    print(f"  Volunteer Hub discovery: {len(found)} page(s) under {root} "
+          f"({len(visited)} crawled)")
+    return list(found.values())
+
+
+# --------------------------------------------------------------------------- #
 # Chunking
 # --------------------------------------------------------------------------- #
 def chunk_text(text: str, words_per: int, overlap: int) -> List[str]:
@@ -324,7 +443,25 @@ def build() -> None:
     cid = 0
     results: List[dict] = []
 
-    sources = list(config.SOURCES) + discover_kb_articles()
+    def _norm_url(u):
+        return (u or "").split("#")[0].split("?")[0].rstrip("/")
+
+    explicit_urls = {_norm_url(s.get("url")) for s in config.SOURCES}
+    sources = (list(config.SOURCES)
+               + discover_kb_articles()
+               + discover_volunteer_hub_pages(exclude_urls=explicit_urls))
+
+    # De-duplicate by normalized URL (first occurrence wins, so explicit SOURCES
+    # and KB articles take precedence over crawled hub pages).
+    seen_urls = set()
+    deduped = []
+    for s in sources:
+        nu = _norm_url(s.get("url"))
+        if nu and nu in seen_urls:
+            continue
+        seen_urls.add(nu)
+        deduped.append(s)
+    sources = deduped
 
     for src in sources:
         rec = {"id": src["id"], "title": src["title"],
