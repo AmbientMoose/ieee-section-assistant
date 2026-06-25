@@ -52,6 +52,49 @@ def tokenize(text: str) -> List[str]:
             if t not in _STOP and len(t) > 1]
 
 
+# Everyday wording <-> IEEE terminology. Volunteers (especially new ones) often
+# ask using non-IEEE words, so a question about "events" should still match a
+# passage that says "technical meetings". expand_query() appends related terms
+# to the query before vectorizing; the words are stemmed by tokenize() the same
+# way the documents are, so both sides stay consistent. Edit freely.
+SYNONYMS = {
+    "event": ["meeting", "activity"],
+    "events": ["meetings", "activities"],
+    "meeting": ["event", "activity"],
+    "meetings": ["events", "activities"],
+    "activity": ["event", "meeting"],
+    "activities": ["events", "meetings"],
+    "chapter": ["unit", "branch", "ou"],
+    "branch": ["unit", "ou"],
+    "unit": ["chapter", "branch", "ou"],
+    "dues": ["fee", "fees", "payment"],
+    "fee": ["dues"],
+    "fees": ["dues"],
+    "reimbursement": ["expense", "expenses", "concur"],
+    "reimburse": ["expense", "expenses"],
+    "expense": ["reimbursement"],
+    "expenses": ["reimbursement"],
+    "officer": ["volunteer", "leader"],
+    "volunteer": ["officer", "leader"],
+    "annually": ["annual", "year", "yearly"],
+    "annual": ["annually", "year", "yearly"],
+}
+
+
+def expand_query(query: str) -> str:
+    """Append IEEE-term synonyms for any recognized word in the query so that
+    vocabulary mismatches (volunteer wording vs. documentation) still retrieve.
+    Matching is on raw lowercased words; appended terms are stemmed downstream."""
+    extra: List[str] = []
+    seen = set()
+    for tok in _TOKEN_RE.findall(query.lower()):
+        for syn in SYNONYMS.get(tok, ()):
+            if syn not in seen:
+                seen.add(syn)
+                extra.append(syn)
+    return query + (" " + " ".join(extra) if extra else "")
+
+
 @dataclass
 class Chunk:
     chunk_id: int
@@ -103,7 +146,7 @@ class Index:
         document are returned - otherwise one long doc can fill every slot and
         crowd out the document that actually answers the question.
         """
-        q = self._vectorize(query)
+        q = self._vectorize(expand_query(query))
         if not np.any(q):
             return []
         scores = self.matrix @ q  # cosine similarity (both normalized)
