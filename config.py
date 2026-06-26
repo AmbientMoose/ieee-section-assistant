@@ -100,8 +100,32 @@ SOURCES = [
     },
     {
         "id": "concur_faq",
-        "title": "Concur: Frequently Asked Questions (Overview and Benefits)",
-        "url": "https://corporate.ieee.org/images/files/finance/concur/frequently-asked-questions.pdf",
+        "title": "Concur: Frequently Asked Questions",
+        "url": "https://corporate.ieee.org/images/files/finance/concur/Concur_FAQs.pdf",
+        "category": "Concur / Expenses",
+        "type": "pdf",
+    },
+    {
+        "id": "ieee_expense_report",
+        "title": "IEEE Expense Report — NextGen Expense (Concur): how to get reimbursed",
+        "url": "https://corporate.ieee.org/resources/travel-medical-and-insurance/ieee-expense-report",
+        "category": "Concur / Expenses",
+        "type": "html",
+        # This page is JavaScript-rendered (a plain fetch returns nothing), so its
+        # text is captured in data/manual/ieee_expense_report.html to guarantee
+        # ingestion. The downloader prefers that manual file over fetching.
+    },
+    {
+        "id": "nextgen_expense_checklist",
+        "title": "NextGen Expense Reimbursement Checklist (getting started & submitting)",
+        "url": "https://corporate.ieee.org/images/files/finance/concur/NextGenExpenseReimb_Checklist_7feb2021.pdf",
+        "category": "Concur / Expenses",
+        "type": "pdf",
+    },
+    {
+        "id": "concur_exceptions_icons",
+        "title": "Concur: Exception Icons & Definitions (Travel & Expense)",
+        "url": "https://corporate.ieee.org/images/files/finance/concur/exception-icons-and-definitions-travel-and-expense.pdf",
         "category": "Concur / Expenses",
         "type": "pdf",
     },
