@@ -74,8 +74,19 @@ SYNONYMS = {
     "reimburse": ["expense", "expenses"],
     "expense": ["reimbursement"],
     "expenses": ["reimbursement"],
-    "officer": ["volunteer", "leader"],
+    "officer": ["volunteer", "leader", "office"],
     "volunteer": ["officer", "leader"],
+    # officer term/tenure: bridge "term length" and "position" to the manual's
+    # "term of office" wording (the Officer Terms & Eligibility section), which
+    # otherwise loses to vTools officer-management pages.
+    "term": ["office", "tenure"],
+    "terms": ["office", "tenure"],
+    "length": ["term", "duration", "tenure"],
+    "duration": ["term", "length", "tenure"],
+    "tenure": ["term", "office"],
+    "position": ["office", "officer", "role"],
+    "positions": ["office", "officer", "role"],
+    "office": ["officer", "position", "term"],
     # geographic-unit website tooling (WebInABox) + "geounit" jargon. Maps a
     # volunteer's intent ("create a website") to the tool name that actually
     # does it, so the WebInABox article can surface.
