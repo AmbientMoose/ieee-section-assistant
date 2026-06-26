@@ -16,10 +16,12 @@ from pathlib import Path
 # --- Paths -------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
-DOCS_DIR = DATA_DIR / "docs"          # downloaded source files (pdf/html)
+DOCS_DIR = DATA_DIR / "docs"          # auto-downloaded cache (wiped by --rebuild)
+MANUAL_DIR = DATA_DIR / "manual"      # user-provided files; NEVER auto-deleted
 INDEX_PATH = DATA_DIR / "index.pkl"   # built search index
 DATA_DIR.mkdir(exist_ok=True)
 DOCS_DIR.mkdir(exist_ok=True)
+MANUAL_DIR.mkdir(exist_ok=True)
 
 # --- Source corpus (public IEEE documents) -----------------------------------
 # type: "pdf" -> extracted page-by-page with pypdf
@@ -36,10 +38,43 @@ SOURCES = [
     {
         "id": "ieee_constitution_bylaws",
         "title": "IEEE Constitution and Bylaws",
-        "url": "https://events.ieee.org/wp-content/uploads/ieee-constitution-and-bylaws.pdf",
+        "url": "https://ieee-org.widen.net/s/xcmfjhtrv2/ieee-constitution-and-bylaws",
         "category": "Governance / Operations",
         "type": "pdf",
     },
+    {
+        "id": "ieee_policies",
+        "title": "IEEE Policies",
+        "url": "https://www.ieee.org/content/dam/ieee-org/ieee/web/org/about/whatis/ieee-policies.pdf",
+        "category": "Governance / Operations",
+        "type": "pdf",
+    },
+    {
+        "id": "ieee_certificate_of_incorporation",
+        "title": "IEEE Certificate of Incorporation",
+        "url": "https://ieee-org.widen.net/s/5tfbmnw6pq/01-05-1993_certificate_of_incorporation",
+        "category": "Governance / Operations",
+        "type": "pdf",
+    },
+    {
+        "id": "nac_operations_manual",
+        "title": "IEEE Nominations & Appointments Committee (N&A) Operations Manual",
+        # Widen viewer link (pdf.js) -- not directly downloadable by the script;
+        # download in a browser and drop into data/docs/nac_operations_manual.pdf
+        "url": "https://ieee-org.widen.net/s/rzfzk8nmxz/nac-ops-manual",
+        "category": "Governance / Operations",
+        "type": "pdf",
+    },
+    {
+        "id": "ieee_investment_operations_manual",
+        "title": "IEEE Investment Operations Manual (IOM)",
+        "url": "https://ieee-org.widen.net/s/xmpwxxkjmx/ieee-investment-operations-manual",
+        "category": "Governance / Operations",
+        "type": "pdf",
+    },
+    # Also suggested by A. Luque for completeness (add a URL to ingest if wanted):
+    #   New York Not-for-Profit Corporation Law (NPCL) -- external NY State statute,
+    #   large; host or link a PDF and add an entry here to include it.
     # ---- Treasurer / Finance ------------------------------------------------
     {
         "id": "treasurer_training",
@@ -51,7 +86,7 @@ SOURCES = [
     {
         "id": "finance_operations_manual",
         "title": "IEEE Finance Operations Manual (FOM) — financial procedures",
-        "url": "https://events.ieee.org/wp-content/uploads/financial-ops-manual.pdf",
+        "url": "https://ieee-org.widen.net/s/6nqd2dfrd6/financial-ops-manual",
         "category": "Treasurer / Finance",
         "type": "pdf",
     },

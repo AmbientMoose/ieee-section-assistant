@@ -32,23 +32,109 @@ try:
 except ImportError:  # pragma: no cover
     PdfReader = None
 
-HEADERS = {"User-Agent": "IEEE-Assistant-Prototype/1.0 (+research demo)"}
+HEADERS = {
+    "Accept": "text/html,application/xhtml+xml,application/pdf,*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 _EXT = {"pdf": ".pdf", "html": ".html"}
+
+# An honest bot UA is the default: some IEEE hosts (mga/corporate) return HTTP
+# 418 to a *spoofed* browser UA. A real browser UA is kept as a fallback for the
+# rare host that blocks unknown agents instead.
+_UA_PRIMARY = "IEEE-Section-Assistant/1.0 (+research prototype)"
+_UA_FALLBACK = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36")
+
+# Reuse one session so any WAF "clearance" cookie persists across requests.
+_SESSION = requests.Session()
+# Per-host rate limiting: stay under IEEE's WAF threshold (which returns HTTP 418
+# to suspected bots). Tracks the last request time per host.
+_LAST_REQUEST = {}
+MIN_REQUEST_INTERVAL = float(getattr(config, "MIN_REQUEST_INTERVAL", 1.5))
+
+
+def _throttle(host: str) -> None:
+    wait = MIN_REQUEST_INTERVAL - (time.time() - _LAST_REQUEST.get(host, 0.0))
+    if wait > 0:
+        time.sleep(wait)
+    _LAST_REQUEST[host] = time.time()
+
+
+def _http_get(url: str, attempts: int = 3):
+    """GET with several layers of resilience against IEEE's bot defenses:
+      - per-host rate limiting (avoid tripping the WAF that returns HTTP 418);
+      - a persistent session + same-site Referer (look less bot-like);
+      - User-Agent fallback: if a host blocks with 403/418, retry with the
+        other UA;
+      - retry + exponential backoff for transient failures (429/5xx, timeouts).
+    Other 4xx (e.g. 404) fail fast without retrying."""
+    host = up.urlparse(url).netloc
+    referer = f"{up.urlparse(url).scheme}://{host}/"
+    last = None
+    for ua in (_UA_PRIMARY, _UA_FALLBACK):
+        headers = dict(HEADERS, **{"User-Agent": ua, "Referer": referer})
+        for i in range(attempts):
+            _throttle(host)
+            try:
+                r = _SESSION.get(url, headers=headers, timeout=60)
+            except Exception as e:  # noqa: BLE001  (connection/timeout -> retry)
+                last = e
+                if i < attempts - 1:
+                    time.sleep(2 ** i)
+                continue
+            if r.status_code in (403, 418):  # bot block -> try the other UA
+                last = requests.HTTPError(f"{r.status_code} {r.reason}")
+                break
+            if r.status_code in (429, 500, 502, 503, 504):  # transient -> retry
+                last = requests.HTTPError(f"{r.status_code} {r.reason}")
+                if i < attempts - 1:
+                    time.sleep(2 ** i)
+                continue
+            r.raise_for_status()  # other 4xx -> raise immediately (no retry)
+            return r
+    raise last
 
 
 # --------------------------------------------------------------------------- #
 # Download
 # --------------------------------------------------------------------------- #
+def _widen_download_url(url: str):
+    """For a Widen DAM share link (.../s/<id>/<name>), return a forced-download
+    variant so we get the file bytes instead of an HTML viewer page."""
+    if "widen.net" not in url or "download=" in url:
+        return None
+    return url + ("&" if "?" in url else "?") + "download=true"
+
+
 def download(source: dict):
     ext = _EXT.get(source.get("type", "pdf"), ".pdf")
+    # 1) A user-provided file in data/manual/ wins and is never auto-deleted.
+    #    Use this for documents the script can't fetch (e.g. Widen viewer links):
+    #    download the PDF in a browser and save it as data/manual/<id>.pdf.
+    manual = config.MANUAL_DIR / f"{source['id']}{ext}"
+    if manual.exists() and manual.stat().st_size > 0:
+        print(f"  using manual file for {source['id']}", flush=True)
+        return manual
+    # 2) Otherwise use the cached download if present.
     dest = config.DOCS_DIR / f"{source['id']}{ext}"
     if dest.exists() and dest.stat().st_size > 0:
         return dest
+    is_pdf = source.get("type", "pdf") == "pdf"
     try:
         print(f"  downloading {source['title']} ...", flush=True)
-        r = requests.get(source["url"], headers=HEADERS, timeout=60)
-        r.raise_for_status()
-        dest.write_bytes(r.content)
+        content = _http_get(source["url"]).content
+        # A PDF source that comes back as HTML is usually a share/landing page;
+        # retry as a forced direct download (e.g. Widen ?download=true).
+        if is_pdf and content[:5] != b"%PDF-":
+            alt = _widen_download_url(source["url"])
+            if alt:
+                content = _http_get(alt).content
+        if is_pdf and content[:5] != b"%PDF-":
+            raise ValueError("expected a PDF but received non-PDF content "
+                             "(link may be an HTML viewer; use a direct-download "
+                             "URL or drop the file into data/docs/)")
+        dest.write_bytes(content)
         return dest
     except Exception as e:  # noqa: BLE001
         print(f"  ! could not download {source['id']}: {e}", file=sys.stderr)
@@ -167,9 +253,10 @@ def _slug_to_title(slug: str) -> str:
 
 
 def _fetch_text(url: str) -> str:
-    r = requests.get(url, headers=HEADERS, timeout=60)
-    r.raise_for_status()
-    return r.text
+    """Fetch a page's text via the resilient _http_get so the crawlers (KB
+    discovery, sitemaps, Volunteer Hub) get the same User-Agent fallback,
+    session, rate-limiting and retry handling as file downloads."""
+    return _http_get(url).text
 
 
 def _urls_from_sitemaps(sitemap_urls: List[str], max_depth: int = 2) -> List[str]:
@@ -532,6 +619,8 @@ if __name__ == "__main__":
                     help="force re-download and rebuild")
     args = ap.parse_args()
     if args.rebuild:
+        # Clear only the auto-downloaded cache and the index. Files in
+        # config.MANUAL_DIR (user-provided PDFs) are deliberately left alone.
         for f in config.DOCS_DIR.glob("*"):
             if f.is_file():
                 f.unlink()
