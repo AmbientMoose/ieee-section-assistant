@@ -162,12 +162,16 @@ class Index:
                 vec /= n
         return vec
 
-    def search(self, query: str, top_k: int = 5, max_per_doc: int = 2):
+    def search(self, query: str, top_k: int = 8, max_per_doc: int = 4,
+               max_per_page: int = 2):
         """Return up to top_k (chunk, score) hits, most relevant first.
 
-        To keep results diverse, at most `max_per_doc` chunks from any single
-        document are returned - otherwise one long doc can fill every slot and
-        crowd out the document that actually answers the question.
+        Diversity caps keep one source from filling every slot, but they must not
+        starve a large multi-section document: a single big manual (one doc_id
+        spanning hundreds of pages) needs several slots so the exact passage that
+        answers the question can surface. So we cap per PAGE (`max_per_page`) to
+        avoid near-duplicate overlapping chunks, and allow up to `max_per_doc`
+        chunks from one document across different pages/sections.
         """
         q = self._vectorize(expand_query(query))
         if not np.any(q):
@@ -176,6 +180,7 @@ class Index:
         order = np.argsort(-scores)
         results = []
         per_doc: Dict[str, int] = {}
+        per_page: Dict[tuple, int] = {}
         for i in order:
             s = float(scores[i])
             if s <= 0:
@@ -183,8 +188,11 @@ class Index:
             ch = self.chunks[i]
             if per_doc.get(ch.doc_id, 0) >= max_per_doc:
                 continue
+            if per_page.get((ch.doc_id, ch.page), 0) >= max_per_page:
+                continue
             results.append((ch, s))
             per_doc[ch.doc_id] = per_doc.get(ch.doc_id, 0) + 1
+            per_page[(ch.doc_id, ch.page)] = per_page.get((ch.doc_id, ch.page), 0) + 1
             if len(results) >= top_k:
                 break
         return results

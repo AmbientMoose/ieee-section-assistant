@@ -63,6 +63,13 @@ SYSTEM = (
     "a question asking whether it is required, automatic, or applies to 'all' "
     "should usually be answered 'no', with the condition explained. State the "
     "relevant conditions rather than rounding to the simplest answer.\n\n"
+    "MATCH THE EXACT ENTITY: IEEE has many similarly-named but distinct units -- "
+    "a 'Chapter', a 'Student Branch', and a 'Student Branch Chapter' are "
+    "different things, each with its own rules. When a passage states a "
+    "requirement for the exact entity the question asks about, use that figure "
+    "directly and cite it. Do NOT dismiss a stated figure just because a related "
+    "entity has a different one, and do not substitute a related entity's rule "
+    "for the one actually asked about.\n\n"
     "Be concise and practical."
 )
 
