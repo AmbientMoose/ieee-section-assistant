@@ -63,7 +63,9 @@ minutes the first time, then it's cached).
 
    See `.streamlit/secrets.toml.example` for the template. The app reads these
    automatically — `app_password` turns on the password gate, and the API key
-   switches answers from extractive to LLM-synthesized.
+   switches answers from extractive to LLM-synthesized. Optionally add
+   `gateway_secret = "..."` (same value as in the SC2026 gateway app) to let
+   signed gateway launch links skip the password prompt.
 3. The app restarts automatically. Done.
 
 ## Step 4 — Share it
