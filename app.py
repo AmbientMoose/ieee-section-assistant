@@ -14,7 +14,9 @@ Deployed on Streamlit Community Cloud:
 import os
 import re
 import hmac
+import hashlib
 import json
+import time
 import html as html_lib
 
 import streamlit as st
@@ -40,9 +42,39 @@ def _load_secrets_into_env():
             os.environ[key] = str(secrets[key])
 
 
+def _gateway_token_ok() -> bool:
+    """Accept a signed launch token from the SC2026 gateway app
+    (?gw=<expiry_unix>.<hex hmac_sha256(secret, expiry)>), so event attendees
+    arriving via the gateway skip the password prompt. The shared secret lives
+    in st.secrets['gateway_secret'] (or the GATEWAY_SECRET env var); with no
+    secret configured, tokens are ignored and the password gate applies."""
+    token = st.query_params.get("gw", "")
+    if not token:
+        return False
+    secret = ""
+    try:
+        if hasattr(st, "secrets"):
+            secret = str(st.secrets.get("gateway_secret", ""))
+    except Exception:
+        secret = ""
+    if not secret:
+        secret = os.getenv("GATEWAY_SECRET", "")
+    if not secret:
+        return False
+    expiry, _, sig = token.partition(".")
+    try:
+        if time.time() > int(expiry):
+            return False
+    except ValueError:
+        return False
+    want = hmac.new(secret.encode(), expiry.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(sig, want)
+
+
 def check_password() -> bool:
     """Gate the app behind a shared password stored in st.secrets['app_password'].
-    If no password is configured, the app is open (e.g. extractive-only deploys)."""
+    If no password is configured, the app is open (e.g. extractive-only deploys).
+    Signed gateway launch links (see _gateway_token_ok) also pass the gate."""
     configured = ""
     try:
         if hasattr(st, "secrets"):
@@ -55,6 +87,9 @@ def check_password() -> bool:
     if not configured:
         return True  # open deployment
     if st.session_state.get("auth_ok"):
+        return True
+    if _gateway_token_ok():
+        st.session_state["auth_ok"] = True
         return True
 
     def _check():
